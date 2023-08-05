@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 
-	"meowchat-user/biz/application/service"
-	"meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/application/service"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 )
 
 type UserServerImpl struct {

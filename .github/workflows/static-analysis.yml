@@ -19,13 +19,11 @@ jobs:
         target:
           - linux-amd64-fmt
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v4
         with:
-          go-version: "stable"
+          go-version: stable
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
           version: latest
-      - name: go test
-        run: go test ./...

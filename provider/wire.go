@@ -6,7 +6,7 @@ package provider
 import (
 	"github.com/google/wire"
 
-	"meowchat-user/biz/adaptor"
+	"github.com/xh-polaris/meowchat-user/biz/adaptor"
 )
 
 func NewUserServerImpl() (*adaptor.UserServerImpl, error) {

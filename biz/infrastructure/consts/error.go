@@ -1,6 +1,8 @@
 package consts
 
-import "google.golang.org/grpc/status"
+import (
+	"google.golang.org/grpc/status"
+)
 
 var (
 	ErrNotFound        = status.Error(12001, "data not found")

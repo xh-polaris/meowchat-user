@@ -2,13 +2,13 @@ package service
 
 import (
 	"context"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
-	"github.com/zeromicro/go-zero/core/stores/monc"
-	"meowchat-user/biz/infrastructure/consts"
-	"meowchat-user/biz/infrastructure/data/db"
-	"meowchat-user/biz/infrastructure/mapper/likeMapper"
 
 	"github.com/google/wire"
+	"github.com/zeromicro/go-zero/core/stores/monc"
 )
 
 type LikeService interface {
@@ -20,7 +20,7 @@ type LikeService interface {
 }
 
 type LikeServiceImpl struct {
-	LikeModel likeMapper.LikeModel
+	LikeModel like.IMongoMapper
 }
 
 var LikeSet = wire.NewSet(
@@ -40,7 +40,7 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 	case false:
 		// 插入数据
 		likeModel := s.LikeModel
-		alike := &db.Like{
+		alike := &like.Like{
 			UserId:       req.UserId,
 			TargetId:     req.TargetId,
 			TargetType:   int64(req.Type),

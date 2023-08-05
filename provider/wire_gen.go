@@ -7,11 +7,11 @@
 package provider
 
 import (
-	"meowchat-user/biz/adaptor"
-	"meowchat-user/biz/application/service"
-	"meowchat-user/biz/infrastructure/config"
-	"meowchat-user/biz/infrastructure/mapper/likeMapper"
-	"meowchat-user/biz/infrastructure/mapper/userMapper"
+	"github.com/xh-polaris/meowchat-user/biz/adaptor"
+	"github.com/xh-polaris/meowchat-user/biz/application/service"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
 )
 
 // Injectors from wire.go:
@@ -21,13 +21,15 @@ func NewUserServerImpl() (*adaptor.UserServerImpl, error) {
 	if err != nil {
 		return nil, err
 	}
-	likeModel := likeMapper.NewLikeModel(configConfig)
+	iMongoMapper := like.NewMongoModel(configConfig)
 	likeServiceImpl := &service.LikeServiceImpl{
-		LikeModel: likeModel,
+		LikeModel: iMongoMapper,
 	}
-	model := userMapper.NewModel(configConfig)
+	userIMongoMapper := user.NewMongoMapper(configConfig)
+	iEsMapper := user.NewEsMapper(configConfig)
 	userServiceImpl := &service.UserServiceImpl{
-		UserModel: model,
+		UserMongoMapper: userIMongoMapper,
+		UserEsMapper:    iEsMapper,
 	}
 	userServerImpl := &adaptor.UserServerImpl{
 		Config:      configConfig,

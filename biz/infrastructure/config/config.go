@@ -17,9 +17,8 @@ type Config struct {
 	service.ServiceConf
 	ListenOn string
 	Mongo    struct {
-		URL    string
-		UserDB string
-		LikeDB string
+		URL string
+		DB  string
 	}
 	CacheConf     cache.CacheConf
 	Elasticsearch ElasticsearchConf

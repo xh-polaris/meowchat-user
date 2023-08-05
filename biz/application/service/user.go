@@ -2,14 +2,15 @@ package service
 
 import (
 	"context"
+	"github.com/xh-polaris/paginator-go/esp"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
+	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
+
+	"github.com/google/wire"
 	"github.com/xh-polaris/paginator-go"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"meowchat-user/biz/infrastructure/consts"
-	"meowchat-user/biz/infrastructure/data/db"
-	"meowchat-user/biz/infrastructure/mapper/userMapper"
-
-	"github.com/google/wire"
 )
 
 type UserService interface {
@@ -20,7 +21,8 @@ type UserService interface {
 }
 
 type UserServiceImpl struct {
-	UserModel userMapper.Model
+	UserMongoMapper usermapper.IMongoMapper
+	UserEsMapper    usermapper.IEsMapper
 }
 
 var UserSet = wire.NewSet(
@@ -29,7 +31,7 @@ var UserSet = wire.NewSet(
 )
 
 func (s *UserServiceImpl) GetUser(ctx context.Context, req *user.GetUserReq) (res *user.GetUserResp, err error) {
-	user1, err := s.UserModel.FindOne(ctx, req.UserId)
+	user1, err := s.UserMongoMapper.FindOne(ctx, req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +46,7 @@ func (s *UserServiceImpl) GetUser(ctx context.Context, req *user.GetUserReq) (re
 }
 
 func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *user.GetUserDetailReq) (res *user.GetUserDetailResp, err error) {
-	user1, err := s.UserModel.FindOne(ctx, req.UserId)
+	user1, err := s.UserMongoMapper.FindOne(ctx, req.UserId)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +67,7 @@ func (s *UserServiceImpl) UpdateUser(ctx context.Context, req *user.UpdateUserRe
 		return nil, consts.ErrInvalidObjectId
 	}
 
-	err = s.UserModel.UpsertUser(ctx, &db.User{
+	err = s.UserMongoMapper.UpsertUser(ctx, &usermapper.User{
 		ID:        oid,
 		AvatarUrl: req.User.AvatarUrl,
 		Nickname:  req.User.Nickname,
@@ -85,7 +87,7 @@ func (s *UserServiceImpl) SearchUser(ctx context.Context, req *user.SearchUserRe
 		Backward:  req.Backward,
 		LastToken: req.LastToken,
 	}
-	data, total, err := s.UserModel.SearchUser(ctx, req.Nickname, popts, db.ScoreSorter)
+	data, total, err := s.UserEsMapper.SearchUser(ctx, req.Nickname, popts, &esp.ScoreSorter{})
 	if err != nil {
 		return nil, err
 	}

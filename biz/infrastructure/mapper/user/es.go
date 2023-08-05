@@ -1,15 +1,15 @@
-package es
+package user
 
 import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	"github.com/xh-polaris/paginator-go"
 	"github.com/xh-polaris/paginator-go/esp"
 	"log"
-	"meowchat-user/biz/infrastructure/config"
-	"meowchat-user/biz/infrastructure/data/db"
 	"net/http"
 	"time"
 
@@ -20,22 +20,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	UserCollectionName = "user"
-)
-
 type (
-	UserEsModel interface {
-		SearchUser(ctx context.Context, name string, popts *paginator.PaginationOptions, sorter int) ([]*db.User, int64, error)
+	IEsMapper interface {
+		SearchUser(ctx context.Context, name string, popts *paginator.PaginationOptions, sorter any) ([]*User, int64, error)
 	}
 
-	defaultUserModel struct {
+	EsMapper struct {
 		es        *elasticsearch.TypedClient
 		indexName string
 	}
 )
 
-func NewUserModel(config *config.Config) UserEsModel {
+func NewEsMapper(config *config.Config) IEsMapper {
 	esClient, err := elasticsearch.NewTypedClient(elasticsearch.Config{
 		Addresses: config.Elasticsearch.Addresses,
 		Username:  config.Elasticsearch.Username,
@@ -47,14 +43,14 @@ func NewUserModel(config *config.Config) UserEsModel {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &defaultUserModel{
+	return &EsMapper{
 		es:        esClient,
-		indexName: fmt.Sprintf("%s.%s-alias", config.Mongo.UserDB, UserCollectionName),
+		indexName: fmt.Sprintf("%s.%s-alias", config.Mongo.DB, CollectionName),
 	}
 }
 
-func (m *defaultUserModel) SearchUser(ctx context.Context, name string, popts *paginator.PaginationOptions, sorter int) ([]*db.User, int64, error) {
-	p := esp.NewEsPaginator(paginator.NewRawStore(Sorters[sorter]), popts)
+func (m *EsMapper) SearchUser(ctx context.Context, name string, popts *paginator.PaginationOptions, sorter any) ([]*User, int64, error) {
+	p := esp.NewEsPaginator(paginator.NewRawStore(sorter), popts)
 	s, sa, err := p.MakeSortOptions(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -65,7 +61,7 @@ func (m *defaultUserModel) SearchUser(ctx context.Context, name string, popts *p
 				Must: []types.Query{
 					{
 						Match: map[string]types.MatchQuery{
-							db.Nickname: {
+							consts.Nickname: {
 								Query: name,
 							},
 						},
@@ -82,19 +78,19 @@ func (m *defaultUserModel) SearchUser(ctx context.Context, name string, popts *p
 
 	hits := res.Hits.Hits
 	total := res.Hits.Total.Value
-	datas := make([]*db.User, 0, len(hits))
+	datas := make([]*User, 0, len(hits))
 	for i := range hits {
 		hit := hits[i]
-		data := &db.User{}
+		data := &User{}
 		var source map[string]any
 		err = json.Unmarshal(hit.Source_, &source)
 		if err != nil {
 			return nil, 0, err
 		}
-		if source[db.CreateAt], err = time.Parse("2006-01-02T15:04:05Z07:00", source[db.CreateAt].(string)); err != nil {
+		if source[consts.CreateAt], err = time.Parse("2006-01-02T15:04:05Z07:00", source[consts.CreateAt].(string)); err != nil {
 			return nil, 0, err
 		}
-		if source[db.UpdateAt], err = time.Parse("2006-01-02T15:04:05Z07:00", source[db.UpdateAt].(string)); err != nil {
+		if source[consts.UpdateAt], err = time.Parse("2006-01-02T15:04:05Z07:00", source[consts.UpdateAt].(string)); err != nil {
 			return nil, 0, err
 		}
 		err = mapstructure.Decode(source, data)

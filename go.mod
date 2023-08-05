@@ -1,16 +1,16 @@
-module meowchat-user
+module github.com/xh-polaris/meowchat-user
 
-go 1.19
+go 1.18
 
 require (
-	github.com/cloudwego/hertz v0.6.6
+	github.com/bytedance/sonic v1.8.8
 	github.com/cloudwego/kitex v0.6.2
 	github.com/elastic/go-elasticsearch/v8 v8.9.0
 	github.com/google/wire v0.5.0
 	github.com/kitex-contrib/obs-opentelemetry v0.2.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/xh-polaris/paginator-go v1.0.2
-	github.com/xh-polaris/service-idl-gen-go v0.0.0-20230729032642-da021993d9c7
+	github.com/xh-polaris/service-idl-gen-go v0.0.0-20230804160714-3a65faec50b7
 	github.com/zeromicro/go-zero v1.5.4
 	go.mongodb.org/mongo-driver v1.12.0
 	google.golang.org/grpc v1.57.0
@@ -21,7 +21,7 @@ require (
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bufbuild/protocompile v0.4.0 // indirect
 	github.com/bytedance/gopkg v0.0.0-20230531144706-a12972768317 // indirect
-	github.com/bytedance/sonic v1.8.8 // indirect
+	github.com/bytedance/mockey v1.2.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20221115062448-fe3a3abad311 // indirect
@@ -35,6 +35,7 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/elastic/elastic-transport-go/v8 v8.2.0 // indirect
 	github.com/fatih/color v1.15.0 // indirect
+	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-redis/redis/v8 v8.11.6-0.20220405070650-99c79f7041fc // indirect

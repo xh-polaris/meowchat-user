@@ -2,10 +2,10 @@ package provider
 
 import (
 	"github.com/google/wire"
-	"meowchat-user/biz/application/service"
-	"meowchat-user/biz/infrastructure/config"
-	"meowchat-user/biz/infrastructure/mapper/likeMapper"
-	"meowchat-user/biz/infrastructure/mapper/userMapper"
+	"github.com/xh-polaris/meowchat-user/biz/application/service"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
 )
 
 var AllProvider = wire.NewSet(
@@ -24,6 +24,7 @@ var InfrastructureSet = wire.NewSet(
 )
 
 var MapperSet = wire.NewSet(
-	likeMapper.LikeSet,
-	userMapper.UserSet,
+	like.NewMongoModel,
+	user.NewMongoMapper,
+	user.NewEsMapper,
 )
