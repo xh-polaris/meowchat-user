@@ -12,6 +12,7 @@ import (
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/stores/redis"
 )
 
 // Injectors from wire.go:
@@ -22,8 +23,10 @@ func NewUserServerImpl() (*adaptor.UserServerImpl, error) {
 		return nil, err
 	}
 	iMongoMapper := like.NewMongoModel(configConfig)
+	redisRedis := redis.NewRedis(configConfig)
 	likeServiceImpl := &service.LikeServiceImpl{
 		LikeModel: iMongoMapper,
+		Redis:     redisRedis,
 	}
 	userIMongoMapper := user.NewMongoMapper(configConfig)
 	iEsMapper := user.NewEsMapper(configConfig)

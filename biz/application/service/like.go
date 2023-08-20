@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
-
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
+	"github.com/zeromicro/go-zero/core/stores/redis"
+	"strconv"
+	"time"
 
 	"github.com/google/wire"
 	"github.com/zeromicro/go-zero/core/stores/monc"
@@ -21,6 +23,7 @@ type LikeService interface {
 
 type LikeServiceImpl struct {
 	LikeModel like.IMongoMapper
+	Redis     *redis.Redis
 }
 
 var LikeSet = wire.NewSet(
@@ -46,12 +49,37 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 			TargetType:   int64(req.Type),
 			AssociatedId: req.AssociatedId,
 		}
-		err := likeModel.Insert(ctx, alike)
-		if err == nil {
-			return &user.DoLikeResp{}, nil
-		} else {
+		err = likeModel.Insert(ctx, alike)
+		if err != nil {
 			return &user.DoLikeResp{}, consts.ErrDataBase
 		}
+		r, err := s.Redis.GetCtx(ctx, "like"+req.UserId)
+		if err != nil {
+			return &user.DoLikeResp{}, nil
+		} else if r == "" {
+			res.IsFirst = true
+			err = s.Redis.SetexCtx(ctx, "like"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+			if err != nil {
+				res.IsFirst = false
+				return res, nil
+			}
+		} else {
+			m, err := strconv.ParseInt(r, 10, 64)
+			if err != nil {
+				return res, nil
+			}
+			lastTime := time.Unix(m, 0)
+			err = s.Redis.SetexCtx(ctx, "like"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+			if err != nil {
+				return res, nil
+			}
+			if lastTime.Day() == time.Now().Day() && lastTime.Month() == time.Now().Month() && lastTime.Year() == time.Now().Year() {
+				res.IsFirst = false
+			} else {
+				res.IsFirst = true
+			}
+		}
+		return res, nil
 	case true:
 		likeModel := s.LikeModel
 		ID, err := likeModel.GetId(ctx, req.UserId, req.TargetId, int64(req.Type))
@@ -60,12 +88,12 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 		}
 		err = likeModel.Delete(ctx, ID)
 		if err == nil {
-			return &user.DoLikeResp{}, nil
+			return &user.DoLikeResp{IsFirst: false}, nil
 		} else {
 			return &user.DoLikeResp{}, consts.ErrDataBase
 		}
 	default:
-		return &user.DoLikeResp{}, nil
+		return &user.DoLikeResp{IsFirst: false}, nil
 	}
 }
 
