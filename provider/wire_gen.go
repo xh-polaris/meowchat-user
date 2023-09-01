@@ -12,6 +12,7 @@ import (
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mq"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/stores/redis"
 )
 
@@ -30,9 +31,14 @@ func NewUserServerImpl() (*adaptor.UserServerImpl, error) {
 	}
 	userIMongoMapper := user.NewMongoMapper(configConfig)
 	iEsMapper := user.NewEsMapper(configConfig)
+	producer, err := mq.NewMqProducer(configConfig)
+	if err != nil {
+		return nil, err
+	}
 	userServiceImpl := &service.UserServiceImpl{
 		UserMongoMapper: userIMongoMapper,
 		UserEsMapper:    iEsMapper,
+		MqProducer:      producer,
 	}
 	userServerImpl := &adaptor.UserServerImpl{
 		Config:      configConfig,

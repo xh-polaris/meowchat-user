@@ -2,11 +2,15 @@ package service
 
 import (
 	"context"
+	"github.com/apache/rocketmq-client-go/v2"
 	"github.com/xh-polaris/paginator-go/esp"
+	"github.com/zeromicro/go-zero/core/jsonx"
+	"net/url"
 
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
 
+	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/google/wire"
 	"github.com/xh-polaris/paginator-go"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
@@ -23,6 +27,7 @@ type UserService interface {
 type UserServiceImpl struct {
 	UserMongoMapper usermapper.IMongoMapper
 	UserEsMapper    usermapper.IEsMapper
+	MqProducer      rocketmq.Producer
 }
 
 var UserSet = wire.NewSet(
@@ -77,6 +82,12 @@ func (s *UserServiceImpl) UpdateUser(ctx context.Context, req *user.UpdateUserRe
 		return nil, err
 	}
 
+	//发送使用url信息
+	var urls []url.URL
+	u, _ := url.Parse(req.User.AvatarUrl)
+	urls = append(urls, *u)
+	go s.SendDelayMessage(urls)
+
 	return &user.UpdateUserResp{}, nil
 }
 
@@ -105,4 +116,22 @@ func (s *UserServiceImpl) SearchUser(ctx context.Context, req *user.SearchUserRe
 		res.Token = *popts.LastToken
 	}
 	return res, nil
+}
+
+func (s *UserServiceImpl) SendDelayMessage(message interface{}) {
+	json, _ := jsonx.Marshal(message)
+	msg := &mqprimitive.Message{
+		Topic: "sts_used_url",
+		Body:  json,
+	}
+
+	res, err := s.MqProducer.SendSync(context.Background(), msg)
+	if err != nil || res.Status != mqprimitive.SendOK {
+		for i := 0; i < 2; i++ {
+			res, err := s.MqProducer.SendSync(context.Background(), msg)
+			if err == nil && res.Status == mqprimitive.SendOK {
+				break
+			}
+		}
+	}
 }
