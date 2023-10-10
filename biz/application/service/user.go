@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"net/url"
+	"time"
 
 	"github.com/apache/rocketmq-client-go/v2"
 	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
@@ -61,8 +62,10 @@ func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *user.GetUserDe
 		if err != nil {
 			return nil, err
 		}
-		data.AvatarUrl = "https://static.xhpolaris.com/users/63a99638a3cfd1669937bb4f/avatar/55e30011-01f9-4ce1-b855-58fa5c3335bc.jpeg"
+		data.AvatarUrl = "https://static.xhpolaris.com/cat_world.jpg"
 		data.Nickname = "用户_" + req.GetUserId()[:13]
+		data.UpdateAt = time.Now()
+		data.CreateAt = time.Now()
 		err = s.UserMongoMapper.Insert(ctx, data)
 		if err != nil {
 			return nil, err
