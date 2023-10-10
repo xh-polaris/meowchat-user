@@ -2,19 +2,19 @@ package service
 
 import (
 	"context"
-	"github.com/apache/rocketmq-client-go/v2"
-	"github.com/xh-polaris/paginator-go/esp"
-	"github.com/zeromicro/go-zero/core/jsonx"
 	"net/url"
 
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
-	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
-
+	"github.com/apache/rocketmq-client-go/v2"
 	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/google/wire"
 	"github.com/xh-polaris/paginator-go"
+	"github.com/xh-polaris/paginator-go/esp"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
+	"github.com/zeromicro/go-zero/core/jsonx"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
+	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
 )
 
 type UserService interface {
