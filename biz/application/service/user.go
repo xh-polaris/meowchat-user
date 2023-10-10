@@ -7,8 +7,8 @@ import (
 	"github.com/apache/rocketmq-client-go/v2"
 	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/google/wire"
-	"github.com/xh-polaris/paginator-go"
-	"github.com/xh-polaris/paginator-go/esp"
+	"github.com/xh-polaris/gopkg/pagination"
+	"github.com/xh-polaris/gopkg/pagination/esp"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/jsonx"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -53,7 +53,20 @@ func (s *UserServiceImpl) GetUser(ctx context.Context, req *user.GetUserReq) (re
 func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *user.GetUserDetailReq) (res *user.GetUserDetailResp, err error) {
 	user1, err := s.UserMongoMapper.FindOne(ctx, req.UserId)
 	if err != nil {
-		return nil, err
+		if err != consts.ErrNotFound {
+			return nil, err
+		}
+		data := &usermapper.User{}
+		data.ID, err = primitive.ObjectIDFromHex(req.GetUserId())
+		if err != nil {
+			return nil, err
+		}
+		data.AvatarUrl = "https://static.xhpolaris.com/users/63a99638a3cfd1669937bb4f/avatar/55e30011-01f9-4ce1-b855-58fa5c3335bc.jpeg"
+		data.Nickname = "用户_" + req.GetUserId()[:13]
+		err = s.UserMongoMapper.Insert(ctx, data)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &user.GetUserDetailResp{
@@ -92,13 +105,13 @@ func (s *UserServiceImpl) UpdateUser(ctx context.Context, req *user.UpdateUserRe
 }
 
 func (s *UserServiceImpl) SearchUser(ctx context.Context, req *user.SearchUserReq) (res *user.SearchUserResp, err error) {
-	popts := &paginator.PaginationOptions{
+	popts := &pagination.PaginationOptions{
 		Limit:     req.Limit,
 		Offset:    req.Offset,
 		Backward:  req.Backward,
 		LastToken: req.LastToken,
 	}
-	data, total, err := s.UserEsMapper.SearchUser(ctx, req.Nickname, popts, &esp.ScoreSorter{})
+	data, total, err := s.UserEsMapper.SearchUser(ctx, req.Nickname, popts, esp.ScoreCursorType)
 	if err != nil {
 		return nil, err
 	}

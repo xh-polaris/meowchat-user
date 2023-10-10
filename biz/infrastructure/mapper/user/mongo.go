@@ -2,14 +2,15 @@ package user
 
 import (
 	"context"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/monc"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 )
 
 const (

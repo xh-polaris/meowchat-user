@@ -11,7 +11,6 @@ require (
 	github.com/kitex-contrib/obs-opentelemetry v0.2.3
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/xh-polaris/gopkg v0.0.0-20230915071845-b0ecd425cb58
-	github.com/xh-polaris/paginator-go v1.0.2
 	github.com/xh-polaris/service-idl-gen-go v0.0.0-20230909174338-cc6ca6a20ce5
 	github.com/zeromicro/go-zero v1.5.6
 	go.mongodb.org/mongo-driver v1.12.1

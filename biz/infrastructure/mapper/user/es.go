@@ -5,10 +5,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
-	"github.com/xh-polaris/paginator-go"
-	"github.com/xh-polaris/paginator-go/esp"
 	"log"
 	"net/http"
 	"time"
@@ -17,12 +13,17 @@ import (
 	"github.com/elastic/go-elasticsearch/v8/typedapi/core/search"
 	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/mitchellh/mapstructure"
+	"github.com/xh-polaris/gopkg/pagination"
+	"github.com/xh-polaris/gopkg/pagination/esp"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 )
 
 type (
 	IEsMapper interface {
-		SearchUser(ctx context.Context, name string, popts *paginator.PaginationOptions, sorter any) ([]*User, int64, error)
+		SearchUser(ctx context.Context, name string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error)
 	}
 
 	EsMapper struct {
@@ -49,8 +50,8 @@ func NewEsMapper(config *config.Config) IEsMapper {
 	}
 }
 
-func (m *EsMapper) SearchUser(ctx context.Context, name string, popts *paginator.PaginationOptions, sorter any) ([]*User, int64, error) {
-	p := esp.NewEsPaginator(paginator.NewRawStore(sorter), popts)
+func (m *EsMapper) SearchUser(ctx context.Context, name string, popts *pagination.PaginationOptions, sorter esp.EsCursor) ([]*User, int64, error) {
+	p := esp.NewEsPaginator(pagination.NewRawStore(sorter), popts)
 	s, sa, err := p.MakeSortOptions(ctx)
 	if err != nil {
 		return nil, 0, err
@@ -112,7 +113,7 @@ func (m *EsMapper) SearchUser(ctx context.Context, name string, popts *paginator
 		}
 	}
 	if len(datas) > 0 {
-		err = p.StoreSorter(ctx, datas[0], datas[len(datas)-1])
+		err = p.StoreCursor(ctx, datas[0], datas[len(datas)-1])
 		if err != nil {
 			return nil, 0, err
 		}
