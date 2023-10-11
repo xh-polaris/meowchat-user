@@ -3,10 +3,12 @@ package main
 import (
 	"net"
 
+	"github.com/cloudwego/kitex/pkg/klog"
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
 	"github.com/kitex-contrib/obs-opentelemetry/tracing"
 	"github.com/xh-polaris/gopkg/kitex/middleware"
+	logx "github.com/xh-polaris/gopkg/util/log"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user/userservice"
 
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/util/log"
@@ -14,6 +16,7 @@ import (
 )
 
 func main() {
+	klog.SetLogger(logx.NewKlogLogger())
 	s, err := provider.NewUserServerImpl()
 	if err != nil {
 		panic(err)
