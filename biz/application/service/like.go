@@ -2,12 +2,14 @@ package service
 
 import (
 	"context"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
-	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
-	"github.com/zeromicro/go-zero/core/stores/redis"
 	"strconv"
 	"time"
+
+	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
+	"github.com/zeromicro/go-zero/core/stores/redis"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 
 	"github.com/google/wire"
 	"github.com/zeromicro/go-zero/core/stores/monc"
@@ -33,6 +35,8 @@ var LikeSet = wire.NewSet(
 
 func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res *user.DoLikeResp, err error) {
 	// 判断是否点过赞
+	res = new(user.DoLikeResp)
+
 	data := &user.GetUserLikedReq{
 		UserId:   req.UserId,
 		TargetId: req.TargetId,
