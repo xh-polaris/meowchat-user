@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"net/url"
 	"time"
 
 	"github.com/apache/rocketmq-client-go/v2"
@@ -99,10 +98,10 @@ func (s *UserServiceImpl) UpdateUser(ctx context.Context, req *user.UpdateUserRe
 	}
 
 	//发送使用url信息
-	var urls []url.URL
-	u, _ := url.Parse(req.User.AvatarUrl)
-	urls = append(urls, *u)
-	go s.SendDelayMessage(urls)
+	//var urls []url.URL
+	//u, _ := url.Parse(req.User.AvatarUrl)
+	//urls = append(urls, *u)
+	//go s.SendDelayMessage(urls)
 
 	return &user.UpdateUserResp{}, nil
 }
