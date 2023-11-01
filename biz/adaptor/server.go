@@ -2,6 +2,7 @@ package adaptor
 
 import (
 	"context"
+
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 
 	"github.com/xh-polaris/meowchat-user/biz/application/service"
@@ -48,4 +49,8 @@ func (s *UserServerImpl) UpdateUser(ctx context.Context, req *user.UpdateUserReq
 
 func (s *UserServerImpl) SearchUser(ctx context.Context, req *user.SearchUserReq) (res *user.SearchUserResp, err error) {
 	return s.UserService.SearchUser(ctx, req)
+}
+
+func (s *UserServerImpl) CheckIn(ctx context.Context, req *user.CheckInReq) (res *user.CheckInResp, err error) {
+	return s.UserService.CheckIn(ctx, req)
 }

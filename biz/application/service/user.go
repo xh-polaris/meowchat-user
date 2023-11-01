@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/apache/rocketmq-client-go/v2"
@@ -11,6 +12,7 @@ import (
 	"github.com/xh-polaris/gopkg/pagination/esp"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/jsonx"
+	"github.com/zeromicro/go-zero/core/stores/redis"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
@@ -22,12 +24,14 @@ type UserService interface {
 	GetUserDetail(ctx context.Context, req *user.GetUserDetailReq) (res *user.GetUserDetailResp, err error)
 	UpdateUser(ctx context.Context, req *user.UpdateUserReq) (res *user.UpdateUserResp, err error)
 	SearchUser(ctx context.Context, req *user.SearchUserReq) (res *user.SearchUserResp, err error)
+	CheckIn(ctx context.Context, req *user.CheckInReq) (res *user.CheckInResp, err error)
 }
 
 type UserServiceImpl struct {
 	UserMongoMapper usermapper.IMongoMapper
 	UserEsMapper    usermapper.IEsMapper
 	MqProducer      rocketmq.Producer
+	Redis           *redis.Redis
 }
 
 var UserSet = wire.NewSet(
@@ -129,6 +133,38 @@ func (s *UserServiceImpl) SearchUser(ctx context.Context, req *user.SearchUserRe
 	res = &user.SearchUserResp{Users: resp, Total: total}
 	if popts.LastToken != nil {
 		res.Token = *popts.LastToken
+	}
+	return res, nil
+}
+
+func (s *UserServiceImpl) CheckIn(ctx context.Context, req *user.CheckInReq) (res *user.CheckInResp, err error) {
+
+	res = new(user.CheckInResp)
+	r, err := s.Redis.GetCtx(ctx, "signIn"+req.UserId)
+	if err != nil {
+		return nil, err
+	} else if r == "" {
+		res.IsFirst = true
+		err = s.Redis.SetexCtx(ctx, "signIn"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+		if err != nil {
+			res.IsFirst = false
+			return res, err
+		}
+	} else {
+		m, err := strconv.ParseInt(r, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		lastTime := time.Unix(m, 0)
+		err = s.Redis.SetexCtx(ctx, "signIn"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+		if err != nil {
+			return nil, err
+		}
+		if lastTime.Day() == time.Now().Day() && lastTime.Month() == time.Now().Month() && lastTime.Year() == time.Now().Year() {
+			res.IsFirst = false
+		} else {
+			res.IsFirst = true
+		}
 	}
 	return res, nil
 }
