@@ -5,6 +5,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/apache/rocketmq-client-go/v2"
+	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
+	"github.com/bytedance/sonic"
+	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/system"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 
@@ -24,8 +28,9 @@ type LikeService interface {
 }
 
 type LikeServiceImpl struct {
-	LikeModel like.IMongoMapper
-	Redis     *redis.Redis
+	LikeModel  like.IMongoMapper
+	MqProducer rocketmq.Producer
+	Redis      *redis.Redis
 }
 
 var LikeSet = wire.NewSet(
@@ -57,6 +62,9 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 		if err != nil {
 			return &user.DoLikeResp{}, consts.ErrDataBase
 		}
+
+		s.SendNotificationMessage(req)
+
 		r, err := s.Redis.GetCtx(ctx, "like"+req.UserId)
 		if err != nil {
 			return &user.DoLikeResp{}, nil
@@ -151,4 +159,43 @@ func (s *LikeServiceImpl) GetLikedUsers(ctx context.Context, req *user.GetLikedU
 	}
 
 	return &user.GetLikedUsersResp{UserIds: userIds}, nil
+}
+
+func (s *LikeServiceImpl) SendNotificationMessage(req *user.DoLikeReq) {
+
+	message := &system.Notification{
+		TargetUserId:    req.LikedUserId,
+		SourceUserId:    req.UserId,
+		SourceContentId: req.TargetId,
+		Type:            0,
+		Text:            "",
+		IsRead:          false,
+	}
+	if req.GetType() == 1 {
+		message.Type = 1
+	} else if req.GetType() == 2 {
+		message.Type = 3
+	} else if req.GetType() == 4 {
+		message.Type = 2
+	} else if req.GetType() == 6 {
+		message.Type = 4
+	} else {
+		return
+	}
+
+	json, _ := sonic.Marshal(message)
+	msg := &mqprimitive.Message{
+		Topic: "notification",
+		Body:  json,
+	}
+
+	res, err := s.MqProducer.SendSync(context.Background(), msg)
+	if err != nil || res.Status != mqprimitive.SendOK {
+		for i := 0; i < 2; i++ {
+			res, err := s.MqProducer.SendSync(context.Background(), msg)
+			if err == nil && res.Status == mqprimitive.SendOK {
+				break
+			}
+		}
+	}
 }
