@@ -30,6 +30,7 @@ func NewUserServerImpl() (*adaptor.UserServerImpl, error) {
 	}
 	redisRedis := redis.NewRedis(configConfig)
 	likeServiceImpl := &service.LikeServiceImpl{
+		Config:     configConfig,
 		LikeModel:  iMongoMapper,
 		MqProducer: producer,
 		Redis:      redisRedis,
@@ -37,6 +38,7 @@ func NewUserServerImpl() (*adaptor.UserServerImpl, error) {
 	userIMongoMapper := user.NewMongoMapper(configConfig)
 	iEsMapper := user.NewEsMapper(configConfig)
 	userServiceImpl := &service.UserServiceImpl{
+		Config:          configConfig,
 		UserMongoMapper: userIMongoMapper,
 		UserEsMapper:    iEsMapper,
 		MqProducer:      producer,

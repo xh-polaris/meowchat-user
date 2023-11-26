@@ -15,6 +15,7 @@ import (
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
 )
@@ -28,6 +29,7 @@ type UserService interface {
 }
 
 type UserServiceImpl struct {
+	Config          *config.Config
 	UserMongoMapper usermapper.IMongoMapper
 	UserEsMapper    usermapper.IEsMapper
 	MqProducer      rocketmq.Producer
@@ -140,30 +142,60 @@ func (s *UserServiceImpl) SearchUser(ctx context.Context, req *user.SearchUserRe
 func (s *UserServiceImpl) CheckIn(ctx context.Context, req *user.CheckInReq) (res *user.CheckInResp, err error) {
 
 	res = new(user.CheckInResp)
-	r, err := s.Redis.GetCtx(ctx, "signIn"+req.UserId)
+
+	t, err := s.Redis.GetCtx(ctx, "checkInTimes"+req.UserId)
 	if err != nil {
-		return nil, err
+		return &user.CheckInResp{GetFish: false}, nil
+	}
+	r, err := s.Redis.GetCtx(ctx, "checkInDates"+req.UserId)
+	if err != nil {
+		return &user.CheckInResp{GetFish: false}, nil
 	} else if r == "" {
-		res.IsFirst = true
-		err = s.Redis.SetexCtx(ctx, "signIn"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+		res.GetFish = true
+		res.GetFishTimes = 1
+		err = s.Redis.SetexCtx(ctx, "checkInTimes"+req.UserId, "1", 604800)
 		if err != nil {
-			res.IsFirst = false
-			return res, err
+			res.GetFish = false
+			return &user.CheckInResp{GetFish: false}, nil
+		}
+		err = s.Redis.SetexCtx(ctx, "checkInDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 604800)
+		if err != nil {
+			res.GetFish = false
+			return &user.CheckInResp{GetFish: false}, nil
 		}
 	} else {
-		m, err := strconv.ParseInt(r, 10, 64)
+		times, err := strconv.ParseInt(t, 10, 64)
 		if err != nil {
-			return nil, err
+			return &user.CheckInResp{GetFish: false}, nil
 		}
-		lastTime := time.Unix(m, 0)
-		err = s.Redis.SetexCtx(ctx, "signIn"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+		date, err := strconv.ParseInt(r, 10, 64)
 		if err != nil {
-			return nil, err
+			return &user.CheckInResp{GetFish: false}, nil
+		}
+		lastTime := time.Unix(date, 0)
+		err = s.Redis.SetexCtx(ctx, "checkInDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 604800)
+		if err != nil {
+			return &user.CheckInResp{GetFish: false}, nil
 		}
 		if lastTime.Day() == time.Now().Day() && lastTime.Month() == time.Now().Month() && lastTime.Year() == time.Now().Year() {
-			res.IsFirst = false
+			return &user.CheckInResp{GetFish: false}, nil
+		}
+		lastYear, lastWeek := lastTime.ISOWeek()
+		nowYear, nowWeek := time.Now().ISOWeek()
+		if lastWeek == nowWeek && lastYear == nowYear {
+			res.GetFishTimes = times + 1
+			err = s.Redis.SetexCtx(ctx, "checkInTimes"+req.UserId, strconv.FormatInt(times+1, 10), 604800)
+			if err != nil {
+				return &user.CheckInResp{GetFish: false}, nil
+			}
+			res.GetFish = true
 		} else {
-			res.IsFirst = true
+			err = s.Redis.SetexCtx(ctx, "checkInTimes"+req.UserId, "1", 604800)
+			if err != nil {
+				return &user.CheckInResp{GetFish: false}, nil
+			}
+			res.GetFish = true
+			res.GetFishTimes = 1
 		}
 	}
 	return res, nil

@@ -1,11 +1,12 @@
 package config
 
 import (
+	"os"
+
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/core/service"
 	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/redis"
-	"os"
 )
 
 type ElasticsearchConf struct {
@@ -29,6 +30,7 @@ type Config struct {
 		Retry     int
 		GroupName string
 	}
+	LikeTimes int64
 }
 
 func NewConfig() (*Config, error) {

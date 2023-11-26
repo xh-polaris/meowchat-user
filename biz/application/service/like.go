@@ -12,6 +12,7 @@ import (
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 
@@ -28,6 +29,7 @@ type LikeService interface {
 }
 
 type LikeServiceImpl struct {
+	Config     *config.Config
 	LikeModel  like.IMongoMapper
 	MqProducer rocketmq.Producer
 	Redis      *redis.Redis
@@ -65,32 +67,65 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 
 		s.SendNotificationMessage(req)
 
-		r, err := s.Redis.GetCtx(ctx, "like"+req.UserId)
+		t, err := s.Redis.GetCtx(ctx, "likeTimes"+req.UserId)
 		if err != nil {
-			return &user.DoLikeResp{}, nil
+			return &user.DoLikeResp{GetFish: false}, nil
+		}
+		r, err := s.Redis.GetCtx(ctx, "likeDates"+req.UserId)
+		if err != nil {
+			return &user.DoLikeResp{GetFish: false}, nil
 		} else if r == "" {
-			res.IsFirst = true
-			err = s.Redis.SetexCtx(ctx, "like"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+			res.GetFish = true
+			res.GetFishTimes = 1
+			err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, "1", 86400)
 			if err != nil {
-				res.IsFirst = false
-				return res, nil
+				res.GetFish = false
+				return &user.DoLikeResp{GetFish: false}, nil
+			}
+			err = s.Redis.SetexCtx(ctx, "likeDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+			if err != nil {
+				res.GetFish = false
+				return &user.DoLikeResp{GetFish: false}, nil
 			}
 		} else {
-			m, err := strconv.ParseInt(r, 10, 64)
+			times, err := strconv.ParseInt(t, 10, 64)
 			if err != nil {
-				return res, nil
+				return &user.DoLikeResp{GetFish: false}, nil
 			}
-			lastTime := time.Unix(m, 0)
-			err = s.Redis.SetexCtx(ctx, "like"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+			res.GetFishTimes = times + 1
+			date, err := strconv.ParseInt(r, 10, 64)
 			if err != nil {
-				return res, nil
+				return &user.DoLikeResp{GetFish: false}, nil
+			}
+			lastTime := time.Unix(date, 0)
+			err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, strconv.FormatInt(times+1, 10), 86400)
+			if err != nil {
+				return &user.DoLikeResp{GetFish: false}, nil
+			}
+			err = s.Redis.SetexCtx(ctx, "likeDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
+			if err != nil {
+				return &user.DoLikeResp{GetFish: false}, nil
 			}
 			if lastTime.Day() == time.Now().Day() && lastTime.Month() == time.Now().Month() && lastTime.Year() == time.Now().Year() {
-				res.IsFirst = false
+				err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, strconv.FormatInt(times+1, 10), 86400)
+				if err != nil {
+					return &user.DoLikeResp{GetFish: false}, nil
+				}
+				if times >= s.Config.LikeTimes {
+					res.GetFish = false
+				} else {
+					res.GetFish = true
+				}
 			} else {
-				res.IsFirst = true
+				err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, "1", 86400)
+				if err != nil {
+					return &user.DoLikeResp{GetFish: false}, nil
+				}
+				res.GetFish = true
+				res.GetFishTimes = 1
 			}
 		}
+
 		return res, nil
 	case true:
 		likeModel := s.LikeModel
@@ -100,12 +135,12 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 		}
 		err = likeModel.Delete(ctx, ID)
 		if err == nil {
-			return &user.DoLikeResp{IsFirst: false}, nil
+			return &user.DoLikeResp{GetFish: false}, nil
 		} else {
 			return &user.DoLikeResp{}, consts.ErrDataBase
 		}
 	default:
-		return &user.DoLikeResp{IsFirst: false}, nil
+		return &user.DoLikeResp{GetFish: false}, nil
 	}
 }
 
