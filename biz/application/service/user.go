@@ -155,12 +155,10 @@ func (s *UserServiceImpl) CheckIn(ctx context.Context, req *user.CheckInReq) (re
 		res.GetFishTimes = 1
 		err = s.Redis.SetexCtx(ctx, "checkInTimes"+req.UserId, "1", 604800)
 		if err != nil {
-			res.GetFish = false
 			return &user.CheckInResp{GetFish: false}, nil
 		}
 		err = s.Redis.SetexCtx(ctx, "checkInDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 604800)
 		if err != nil {
-			res.GetFish = false
 			return &user.CheckInResp{GetFish: false}, nil
 		}
 	} else {

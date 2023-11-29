@@ -1,8 +1,9 @@
 package redis
 
 import (
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/zeromicro/go-zero/core/stores/redis"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 )
 
 func NewRedis(config *config.Config) *redis.Redis {
