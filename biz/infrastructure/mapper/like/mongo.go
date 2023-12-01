@@ -2,12 +2,15 @@ package like
 
 import (
 	"context"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
+	"time"
+
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"time"
+	"go.mongodb.org/mongo-driver/mongo/options"
+
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 )
 
 const prefixLikeCacheKey = "cache:like:"
@@ -51,7 +54,10 @@ func NewMongoModel(config *config.Config) IMongoMapper {
 
 func (m *MongoMapper) GetUserLikes(ctx context.Context, userId string, targetType int64) ([]*Like, error) {
 	data := make([]*Like, 0)
-	err := m.conn.Find(ctx, &data, bson.M{consts.UserId: userId, consts.TargetType: targetType})
+	err := m.conn.Find(ctx, &data,
+		bson.M{consts.UserId: userId, consts.TargetType: targetType},
+		&options.FindOptions{Sort: bson.M{consts.ID: -1}},
+	)
 	if err != nil {
 		return nil, err
 	} else {
