@@ -2,8 +2,11 @@ package like
 
 import (
 	"context"
+	"sync"
 	"time"
 
+	"github.com/xh-polaris/gopkg/pagination"
+	"github.com/xh-polaris/gopkg/pagination/mongop"
 	"github.com/zeromicro/go-zero/core/stores/monc"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -25,7 +28,9 @@ type (
 		Update(ctx context.Context, data *Like) error
 		Delete(ctx context.Context, id string) error
 		GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) error
-		GetUserLikes(ctx context.Context, userId string, targetType int64) ([]*Like, error)
+		GetUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error)
+		FindUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
+		CountUserLikes(ctx context.Context, userId string, targetType int64) (int64, error)
 		GetTargetLikes(ctx context.Context, targetId string, targetType int64) ([]*Like, error)
 		GetId(ctx context.Context, userId string, targetId string, targetType int64) (string, error)
 	}
@@ -52,17 +57,78 @@ func NewMongoModel(config *config.Config) IMongoMapper {
 	}
 }
 
-func (m *MongoMapper) GetUserLikes(ctx context.Context, userId string, targetType int64) ([]*Like, error) {
-	data := make([]*Like, 0)
-	err := m.conn.Find(ctx, &data,
-		bson.M{consts.UserId: userId, consts.TargetType: targetType},
-		&options.FindOptions{Sort: bson.M{consts.ID: -1}},
-	)
+func (m *MongoMapper) GetUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error) {
+	var data []*Like
+	var total int64
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	c := make(chan error)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		defer wg.Done()
+		var err error
+		data, err = m.FindUserLikes(ctx, userId, targetType, popts, sorter)
+		if err != nil {
+			c <- err
+			return
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		var err error
+		total, err = m.CountUserLikes(ctx, userId, targetType)
+		if err != nil {
+			c <- err
+			return
+		}
+	}()
+	go func() {
+		wg.Wait()
+		defer close(c)
+	}()
+	if err := <-c; err != nil {
+		return nil, 0, err
+	}
+	return data, total, nil
+}
+
+func (m *MongoMapper) FindUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error) {
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+
+	filter := bson.M{consts.UserId: userId, consts.TargetType: targetType}
+	sort, err := p.MakeSortOptions(ctx, filter)
 	if err != nil {
 		return nil, err
-	} else {
-		return data, nil
 	}
+
+	var data []*Like
+	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	}); err != nil {
+		return nil, err
+	}
+
+	// 如果是反向查询，反转数据
+	if *popts.Backward {
+		for i := 0; i < len(data)/2; i++ {
+			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
+		}
+	}
+	if len(data) > 0 {
+		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
+}
+
+func (m *MongoMapper) CountUserLikes(ctx context.Context, userId string, targetType int64) (int64, error) {
+	f := bson.M{consts.UserId: userId, consts.TargetType: targetType}
+	return m.conn.CountDocuments(ctx, f)
 }
 
 func (m *MongoMapper) GetId(ctx context.Context, userId string, targetId string, targetType int64) (id string, err error) {

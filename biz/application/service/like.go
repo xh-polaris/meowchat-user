@@ -8,6 +8,7 @@ import (
 	"github.com/apache/rocketmq-client-go/v2"
 	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/bytedance/sonic"
+	"github.com/xh-polaris/gopkg/pagination/mongop"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/system"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/stores/redis"
@@ -15,6 +16,7 @@ import (
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/util"
 
 	"github.com/google/wire"
 	"github.com/zeromicro/go-zero/core/stores/monc"
@@ -167,11 +169,17 @@ func (s *LikeServiceImpl) GetTargetLikes(ctx context.Context, req *user.GetTarge
 }
 
 func (s *LikeServiceImpl) GetUserLikes(ctx context.Context, req *user.GetUserLikesReq) (res *user.GetUserLikesResp, err error) {
-	data, err := s.LikeModel.GetUserLikes(ctx, req.UserId, int64(req.Type))
+	p := util.ParsePagination(req.PaginationOptions)
+
+	data, total, err := s.LikeModel.GetUserLikes(ctx, req.UserId, int64(req.Type), p, mongop.IdCursorType)
 	if err != nil {
 		return nil, err
 	}
-
+	res = new(user.GetUserLikesResp)
+	res.Total = total
+	if p.LastToken != nil {
+		res.Token = *p.LastToken
+	}
 	likes := make([]*user.Like, 0)
 	for _, alike := range data {
 		likes = append(likes, &user.Like{
@@ -179,7 +187,8 @@ func (s *LikeServiceImpl) GetUserLikes(ctx context.Context, req *user.GetUserLik
 			AssociatedId: alike.AssociatedId,
 		})
 	}
-	return &user.GetUserLikesResp{Likes: likes}, nil
+	res.Likes = likes
+	return res, nil
 }
 
 func (s *LikeServiceImpl) GetLikedUsers(ctx context.Context, req *user.GetLikedUsersReq) (res *user.GetLikedUsersResp, err error) {
