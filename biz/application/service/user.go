@@ -15,6 +15,8 @@ import (
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/util"
+	"github.com/xh-polaris/meowchat-user/biz/infrastructure/util/log"
 )
 
 type UserService interface {
@@ -54,6 +56,7 @@ func (s *UserServiceImpl) GetUser(ctx context.Context, req *genuser.GetUserReq) 
 
 func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *genuser.GetUserDetailReq) (res *genuser.GetUserDetailResp, err error) {
 	user, err := s.UserMongoMapper.FindOne(ctx, req.UserId)
+	log.CtxError(ctx, "[GetUserDetail] user=%s, err=%v", util.JSONF(user), err)
 	if err != nil {
 		if err != consts.ErrNotFound {
 			return nil, err
