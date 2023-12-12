@@ -5,11 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/apache/rocketmq-client-go/v2"
-	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
-	"github.com/bytedance/sonic"
 	"github.com/xh-polaris/gopkg/pagination/mongop"
-	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/system"
 	"github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 
@@ -31,10 +27,9 @@ type LikeService interface {
 }
 
 type LikeServiceImpl struct {
-	Config     *config.Config
-	LikeModel  like.IMongoMapper
-	MqProducer rocketmq.Producer
-	Redis      *redis.Redis
+	Config    *config.Config
+	LikeModel like.IMongoMapper
+	Redis     *redis.Redis
 }
 
 var LikeSet = wire.NewSet(
@@ -66,52 +61,49 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 		if err != nil {
 			return &user.DoLikeResp{}, consts.ErrDataBase
 		}
-
-		s.SendNotificationMessage(req)
+		res.Liked = true
 
 		t, err := s.Redis.GetCtx(ctx, "likeTimes"+req.UserId)
 		if err != nil {
-			return &user.DoLikeResp{GetFish: false}, nil
+			return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 		}
 		r, err := s.Redis.GetCtx(ctx, "likeDates"+req.UserId)
 		if err != nil {
-			return &user.DoLikeResp{GetFish: false}, nil
+			return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 		} else if r == "" {
 			res.GetFish = true
 			res.GetFishTimes = 1
 			err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, "1", 86400)
 			if err != nil {
-				res.GetFish = false
-				return &user.DoLikeResp{GetFish: false}, nil
+				return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 			}
 			err = s.Redis.SetexCtx(ctx, "likeDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
 			if err != nil {
-				res.GetFish = false
-				return &user.DoLikeResp{GetFish: false}, nil
+				return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 			}
 		} else {
 			times, err := strconv.ParseInt(t, 10, 64)
 			if err != nil {
-				return &user.DoLikeResp{GetFish: false}, nil
+				return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 			}
 			res.GetFishTimes = times + 1
 			date, err := strconv.ParseInt(r, 10, 64)
 			if err != nil {
-				return &user.DoLikeResp{GetFish: false}, nil
+				return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 			}
 			lastTime := time.Unix(date, 0)
 			err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, strconv.FormatInt(times+1, 10), 86400)
 			if err != nil {
-				return &user.DoLikeResp{GetFish: false}, nil
+				return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 			}
 			err = s.Redis.SetexCtx(ctx, "likeDates"+req.UserId, strconv.FormatInt(time.Now().Unix(), 10), 86400)
 			if err != nil {
-				return &user.DoLikeResp{GetFish: false}, nil
+				return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 			}
 			if lastTime.Day() == time.Now().Day() && lastTime.Month() == time.Now().Month() && lastTime.Year() == time.Now().Year() {
 				err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, strconv.FormatInt(times+1, 10), 86400)
 				if err != nil {
-					return &user.DoLikeResp{GetFish: false}, nil
+					return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 				}
 				if times >= s.Config.LikeTimes {
 					res.GetFish = false
@@ -121,7 +113,7 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 			} else {
 				err = s.Redis.SetexCtx(ctx, "likeTimes"+req.UserId, "1", 86400)
 				if err != nil {
-					return &user.DoLikeResp{GetFish: false}, nil
+					return &user.DoLikeResp{GetFish: false, Liked: true}, nil
 				}
 				res.GetFish = true
 				res.GetFishTimes = 1
@@ -203,43 +195,4 @@ func (s *LikeServiceImpl) GetLikedUsers(ctx context.Context, req *user.GetLikedU
 	}
 
 	return &user.GetLikedUsersResp{UserIds: userIds}, nil
-}
-
-func (s *LikeServiceImpl) SendNotificationMessage(req *user.DoLikeReq) {
-
-	message := &system.Notification{
-		TargetUserId:    req.LikedUserId,
-		SourceUserId:    req.UserId,
-		SourceContentId: req.TargetId,
-		Type:            0,
-		Text:            "",
-		IsRead:          false,
-	}
-	if req.GetType() == 1 {
-		message.Type = 1
-	} else if req.GetType() == 2 {
-		message.Type = 3
-	} else if req.GetType() == 4 {
-		message.Type = 2
-	} else if req.GetType() == 6 {
-		message.Type = 4
-	} else {
-		return
-	}
-
-	json, _ := sonic.Marshal(message)
-	msg := &mqprimitive.Message{
-		Topic: "notification",
-		Body:  json,
-	}
-
-	res, err := s.MqProducer.SendSync(context.Background(), msg)
-	if err != nil || res.Status != mqprimitive.SendOK {
-		for i := 0; i < 2; i++ {
-			res, err := s.MqProducer.SendSync(context.Background(), msg)
-			if err == nil && res.Status == mqprimitive.SendOK {
-				break
-			}
-		}
-	}
 }

@@ -2,11 +2,11 @@ package provider
 
 import (
 	"github.com/google/wire"
+
 	"github.com/xh-polaris/meowchat-user/biz/application/service"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/like"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/mq"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/stores/redis"
 )
 
@@ -23,7 +23,6 @@ var ApplicationSet = wire.NewSet(
 var InfrastructureSet = wire.NewSet(
 	config.NewConfig,
 	redis.NewRedis,
-	mq.NewMqProducer,
 	MapperSet,
 )
 

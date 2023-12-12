@@ -5,13 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/apache/rocketmq-client-go/v2"
-	mqprimitive "github.com/apache/rocketmq-client-go/v2/primitive"
 	"github.com/google/wire"
 	"github.com/xh-polaris/gopkg/pagination"
 	"github.com/xh-polaris/gopkg/pagination/esp"
 	genuser "github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
-	"github.com/zeromicro/go-zero/core/jsonx"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
@@ -32,7 +29,6 @@ type UserServiceImpl struct {
 	Config          *config.Config
 	UserMongoMapper usermapper.IMongoMapper
 	UserEsMapper    usermapper.IEsMapper
-	MqProducer      rocketmq.Producer
 	Redis           *redis.Redis
 }
 
@@ -102,12 +98,6 @@ func (s *UserServiceImpl) UpdateUser(ctx context.Context, req *genuser.UpdateUse
 	if err != nil {
 		return nil, err
 	}
-
-	//发送使用url信息
-	//var urls []url.URL
-	//u, _ := url.Parse(req.User.AvatarUrl)
-	//urls = append(urls, *u)
-	//go s.SendDelayMessage(urls)
 
 	return &genuser.UpdateUserResp{}, nil
 }
@@ -197,22 +187,4 @@ func (s *UserServiceImpl) CheckIn(ctx context.Context, req *genuser.CheckInReq) 
 		}
 	}
 	return res, nil
-}
-
-func (s *UserServiceImpl) SendDelayMessage(message interface{}) {
-	json, _ := jsonx.Marshal(message)
-	msg := &mqprimitive.Message{
-		Topic: "sts_used_url",
-		Body:  json,
-	}
-
-	res, err := s.MqProducer.SendSync(context.Background(), msg)
-	if err != nil || res.Status != mqprimitive.SendOK {
-		for i := 0; i < 2; i++ {
-			res, err := s.MqProducer.SendSync(context.Background(), msg)
-			if err == nil && res.Status == mqprimitive.SendOK {
-				break
-			}
-		}
-	}
 }

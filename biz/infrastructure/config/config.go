@@ -25,12 +25,7 @@ type Config struct {
 	CacheConf     cache.CacheConf
 	Elasticsearch ElasticsearchConf
 	Redis         *redis.RedisConf
-	RocketMq      *struct {
-		URL       []string
-		Retry     int
-		GroupName string
-	}
-	LikeTimes int64
+	LikeTimes     int64
 }
 
 func NewConfig() (*Config, error) {
