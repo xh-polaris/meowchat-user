@@ -11,12 +11,11 @@ import (
 	genuser "github.com/xh-polaris/service-idl-gen-go/kitex_gen/meowchat/user"
 	"github.com/zeromicro/go-zero/core/stores/redis"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/config"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	usermapper "github.com/xh-polaris/meowchat-user/biz/infrastructure/mapper/user"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/util"
-	"github.com/xh-polaris/meowchat-user/biz/infrastructure/util/log"
 )
 
 type UserService interface {
@@ -56,7 +55,6 @@ func (s *UserServiceImpl) GetUser(ctx context.Context, req *genuser.GetUserReq) 
 
 func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *genuser.GetUserDetailReq) (res *genuser.GetUserDetailResp, err error) {
 	user, err := s.UserMongoMapper.FindOne(ctx, req.UserId)
-	log.CtxError(ctx, "[GetUserDetail] user=%s, err=%v", util.JSONF(user), err)
 	if err != nil {
 		if err != consts.ErrNotFound {
 			return nil, err
@@ -71,7 +69,13 @@ func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *genuser.GetUse
 		user.UpdateAt = time.Now()
 		user.CreateAt = time.Now()
 		err = s.UserMongoMapper.Insert(ctx, user)
-		if err != nil {
+		// 处理并发冲突
+		if mongo.IsDuplicateKeyError(err) {
+			user, err = s.UserMongoMapper.FindOne(ctx, req.UserId)
+			if err != nil {
+				return nil, err
+			}
+		} else if err != nil {
 			return nil, err
 		}
 	}
