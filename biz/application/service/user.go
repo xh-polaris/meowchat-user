@@ -71,7 +71,7 @@ func (s *UserServiceImpl) GetUserDetail(ctx context.Context, req *genuser.GetUse
 		err = s.UserMongoMapper.Insert(ctx, user)
 		// 处理并发冲突
 		if mongo.IsDuplicateKeyError(err) {
-			user, err = s.UserMongoMapper.FindOne(ctx, req.UserId)
+			user, err = s.UserMongoMapper.FindOneNoCache(ctx, req.UserId)
 			if err != nil {
 				return nil, err
 			}

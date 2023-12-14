@@ -27,6 +27,7 @@ type (
 		Update(ctx context.Context, data *User) error
 		Delete(ctx context.Context, id string) error
 		UpsertUser(ctx context.Context, data *User) error
+		FindOneNoCache(ctx context.Context, id string) (*User, error)
 	}
 
 	MongoMapper struct {
@@ -133,4 +134,22 @@ func (m *MongoMapper) Delete(ctx context.Context, id string) error {
 	key := prefixUserCacheKey + id
 	_, err = m.conn.DeleteOne(ctx, key, bson.M{consts.ID: oid})
 	return err
+}
+
+func (m *MongoMapper) FindOneNoCache(ctx context.Context, id string) (*User, error) {
+	oid, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, consts.ErrInvalidObjectId
+	}
+
+	var data User
+	err = m.conn.FindOneNoCache(ctx, &data, bson.M{consts.ID: oid})
+	switch err {
+	case nil:
+		return &data, nil
+	case monc.ErrNotFound:
+		return nil, consts.ErrNotFound
+	default:
+		return nil, err
+	}
 }
