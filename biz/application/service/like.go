@@ -184,15 +184,24 @@ func (s *LikeServiceImpl) GetUserLikes(ctx context.Context, req *user.GetUserLik
 }
 
 func (s *LikeServiceImpl) GetLikedUsers(ctx context.Context, req *user.GetLikedUsersReq) (res *user.GetLikedUsersResp, err error) {
-	data, err := s.LikeModel.GetTargetLikes(ctx, req.TargetId, int64(req.Type))
+	p := util.ParsePagination(req.PaginationOptions)
+	filter := &like.FilterOptions{
+		OnlyTargetId:   &req.TargetId,
+		OnlyTargetType: (*int32)(&req.Type),
+	}
+	data, err := s.LikeModel.FindMany(ctx, filter, p, mongop.IdCursorType)
 	if err != nil {
 		return nil, err
 	}
-
+	res = new(user.GetLikedUsersResp)
+	if p.LastToken != nil {
+		res.Token = *p.LastToken
+	}
 	userIds := make([]string, 0, len(data))
 	for _, like := range data {
 		userIds = append(userIds, like.UserId)
 	}
+	res.UserIds = userIds
 
-	return &user.GetLikedUsersResp{UserIds: userIds}, nil
+	return res, nil
 }

@@ -27,6 +27,7 @@ type (
 		FindOne(ctx context.Context, id string) (*Like, error)
 		Update(ctx context.Context, data *Like) error
 		Delete(ctx context.Context, id string) error
+		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
 		GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) error
 		GetUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error)
 		FindUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
@@ -146,6 +147,37 @@ func (m *MongoMapper) GetTargetLikes(ctx context.Context, targetId string, targe
 	} else {
 		return data, nil
 	}
+}
+
+func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error) {
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+	filter := makeMongoFilter(fopts)
+	sort, err := p.MakeSortOptions(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	var data []*Like
+	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	}); err != nil {
+		return nil, err
+	}
+
+	// 如果是反向查询，反转数据
+	if *popts.Backward {
+		for i := 0; i < len(data)/2; i++ {
+			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
+		}
+	}
+	if len(data) > 0 {
+		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
 }
 
 func (m *MongoMapper) GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) (err error) {
