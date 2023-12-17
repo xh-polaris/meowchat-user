@@ -28,6 +28,8 @@ type (
 		Update(ctx context.Context, data *Like) error
 		Delete(ctx context.Context, id string) error
 		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
+		Count(ctx context.Context, filter *FilterOptions) (int64, error)
+		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error)
 		GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) error
 		GetUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error)
 		FindUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
@@ -178,6 +180,47 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 		}
 	}
 	return data, nil
+}
+
+func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error) {
+	var data []*Like
+	var total int64
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	c := make(chan error)
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	go func() {
+		defer wg.Done()
+		var err error
+		data, err = m.FindMany(ctx, fopts, popts, sorter)
+		if err != nil {
+			c <- err
+			return
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		var err error
+		total, err = m.Count(ctx, fopts)
+		if err != nil {
+			c <- err
+			return
+		}
+	}()
+	go func() {
+		wg.Wait()
+		defer close(c)
+	}()
+	if err := <-c; err != nil {
+		return nil, 0, err
+	}
+	return data, total, nil
+}
+
+func (m *MongoMapper) Count(ctx context.Context, filter *FilterOptions) (int64, error) {
+	f := makeMongoFilter(filter)
+	return m.conn.CountDocuments(ctx, f)
 }
 
 func (m *MongoMapper) GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) (err error) {

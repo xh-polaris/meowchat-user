@@ -189,11 +189,12 @@ func (s *LikeServiceImpl) GetLikedUsers(ctx context.Context, req *user.GetLikedU
 		OnlyTargetId:   &req.TargetId,
 		OnlyTargetType: (*int32)(&req.Type),
 	}
-	data, err := s.LikeModel.FindMany(ctx, filter, p, mongop.IdCursorType)
+	data, total, err := s.LikeModel.FindManyAndCount(ctx, filter, p, mongop.IdCursorType)
 	if err != nil {
 		return nil, err
 	}
 	res = new(user.GetLikedUsersResp)
+	res.Total = total
 	if p.LastToken != nil {
 		res.Token = *p.LastToken
 	}
