@@ -35,7 +35,6 @@ func NewUserServerImpl() (*adaptor.UserServerImpl, error) {
 		Config:          configConfig,
 		UserMongoMapper: userIMongoMapper,
 		UserEsMapper:    iEsMapper,
-		Redis:           redisRedis,
 	}
 	userServerImpl := &adaptor.UserServerImpl{
 		Config:      configConfig,
