@@ -1,7 +1,6 @@
 package like
 
 import (
-	"github.com/elastic/go-elasticsearch/v8/typedapi/types"
 	"github.com/xh-polaris/meowchat-user/biz/infrastructure/consts"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -41,40 +40,41 @@ func (f *MongoFilter) CheckOnlyTargetType() {
 	}
 }
 
-type EsFilter struct {
-	q []types.Query
-	*FilterOptions
-}
-
-func makeEsFilter(opts *FilterOptions) []types.Query {
-	return (&EsFilter{
-		q:             make([]types.Query, 0),
-		FilterOptions: opts,
-	}).toQuery()
-}
-
-func (f *EsFilter) toQuery() []types.Query {
-	f.checkOnlyTargetId()
-	f.checkOnlyTargetType()
-	return f.q
-}
-
-func (f *EsFilter) checkOnlyTargetId() {
-	if f.OnlyTargetId != nil {
-		f.q = append(f.q, types.Query{
-			Term: map[string]types.TermQuery{
-				consts.TargetId: {Value: *f.OnlyTargetId},
-			},
-		})
-	}
-}
-
-func (f *EsFilter) checkOnlyTargetType() {
-	if f.OnlyTargetType != nil {
-		f.q = append(f.q, types.Query{
-			Term: map[string]types.TermQuery{
-				consts.TargetType: {Value: *f.OnlyTargetType},
-			},
-		})
-	}
-}
+//
+//type EsFilter struct {
+//	q []types.Query
+//	*FilterOptions
+//}
+//
+//func makeEsFilter(opts *FilterOptions) []types.Query {
+//	return (&EsFilter{
+//		q:             make([]types.Query, 0),
+//		FilterOptions: opts,
+//	}).toQuery()
+//}
+//
+//func (f *EsFilter) toQuery() []types.Query {
+//	f.checkOnlyTargetId()
+//	f.checkOnlyTargetType()
+//	return f.q
+//}
+//
+//func (f *EsFilter) checkOnlyTargetId() {
+//	if f.OnlyTargetId != nil {
+//		f.q = append(f.q, types.Query{
+//			Term: map[string]types.TermQuery{
+//				consts.TargetId: {Value: *f.OnlyTargetId},
+//			},
+//		})
+//	}
+//}
+//
+//func (f *EsFilter) checkOnlyTargetType() {
+//	if f.OnlyTargetType != nil {
+//		f.q = append(f.q, types.Query{
+//			Term: map[string]types.TermQuery{
+//				consts.TargetType: {Value: *f.OnlyTargetType},
+//			},
+//		})
+//	}
+//}

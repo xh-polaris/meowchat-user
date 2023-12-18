@@ -51,6 +51,6 @@ func (s *UserServerImpl) SearchUser(ctx context.Context, req *user.SearchUserReq
 	return s.UserService.SearchUser(ctx, req)
 }
 
-func (s *UserServerImpl) CheckIn(ctx context.Context, req *user.CheckInReq) (res *user.CheckInResp, err error) {
-	return s.UserService.CheckIn(ctx, req)
-}
+//func (s *UserServerImpl) CheckIn(ctx context.Context, req *user.CheckInReq) (res *user.CheckInResp, err error) {
+//	return s.UserService.CheckIn(ctx, req)
+//}
