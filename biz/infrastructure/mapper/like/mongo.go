@@ -2,6 +2,7 @@ package like
 
 import (
 	"context"
+	"github.com/zeromicro/go-zero/core/mr"
 	"sync"
 	"time"
 
@@ -185,34 +186,15 @@ func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts 
 func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error) {
 	var data []*Like
 	var total int64
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	c := make(chan error)
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	go func() {
-		defer wg.Done()
+	if err := mr.Finish(func() error {
 		var err error
 		data, err = m.FindMany(ctx, fopts, popts, sorter)
-		if err != nil {
-			c <- err
-			return
-		}
-	}()
-	go func() {
-		defer wg.Done()
+		return err
+	}, func() error {
 		var err error
 		total, err = m.Count(ctx, fopts)
-		if err != nil {
-			c <- err
-			return
-		}
-	}()
-	go func() {
-		wg.Wait()
-		defer close(c)
-	}()
-	if err := <-c; err != nil {
+		return err
+	}); err != nil {
 		return nil, 0, err
 	}
 	return data, total, nil
