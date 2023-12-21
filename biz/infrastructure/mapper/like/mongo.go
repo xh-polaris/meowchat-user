@@ -2,6 +2,7 @@ package like
 
 import (
 	"context"
+	"github.com/zeromicro/go-zero/core/mr"
 	"sync"
 	"time"
 
@@ -27,6 +28,9 @@ type (
 		FindOne(ctx context.Context, id string) (*Like, error)
 		Update(ctx context.Context, data *Like) error
 		Delete(ctx context.Context, id string) error
+		FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
+		Count(ctx context.Context, filter *FilterOptions) (int64, error)
+		FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error)
 		GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) error
 		GetUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error)
 		FindUserLikes(ctx context.Context, userId string, targetType int64, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error)
@@ -146,6 +150,59 @@ func (m *MongoMapper) GetTargetLikes(ctx context.Context, targetId string, targe
 	} else {
 		return data, nil
 	}
+}
+
+func (m *MongoMapper) FindMany(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, error) {
+	p := mongop.NewMongoPaginator(pagination.NewRawStore(sorter), popts)
+	filter := makeMongoFilter(fopts)
+	sort, err := p.MakeSortOptions(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	var data []*Like
+	if err = m.conn.Find(ctx, &data, filter, &options.FindOptions{
+		Sort:  sort,
+		Limit: popts.Limit,
+		Skip:  popts.Offset,
+	}); err != nil {
+		return nil, err
+	}
+
+	// 如果是反向查询，反转数据
+	if *popts.Backward {
+		for i := 0; i < len(data)/2; i++ {
+			data[i], data[len(data)-i-1] = data[len(data)-i-1], data[i]
+		}
+	}
+	if len(data) > 0 {
+		err = p.StoreCursor(ctx, data[0], data[len(data)-1])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return data, nil
+}
+
+func (m *MongoMapper) FindManyAndCount(ctx context.Context, fopts *FilterOptions, popts *pagination.PaginationOptions, sorter mongop.MongoCursor) ([]*Like, int64, error) {
+	var data []*Like
+	var total int64
+	if err := mr.Finish(func() error {
+		var err error
+		data, err = m.FindMany(ctx, fopts, popts, sorter)
+		return err
+	}, func() error {
+		var err error
+		total, err = m.Count(ctx, fopts)
+		return err
+	}); err != nil {
+		return nil, 0, err
+	}
+	return data, total, nil
+}
+
+func (m *MongoMapper) Count(ctx context.Context, filter *FilterOptions) (int64, error) {
+	f := makeMongoFilter(filter)
+	return m.conn.CountDocuments(ctx, f)
 }
 
 func (m *MongoMapper) GetUserLike(ctx context.Context, userId string, targetId string, targetType int64) (err error) {
