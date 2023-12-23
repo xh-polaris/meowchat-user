@@ -63,6 +63,11 @@ func (s *LikeServiceImpl) DoLike(ctx context.Context, req *user.DoLikeReq) (res 
 		}
 		res.Liked = true
 
+		if req.Type == user.LikeType_User {
+			res.GetFish = false
+			return res, nil
+		}
+
 		t, err := s.Redis.GetCtx(ctx, "likeTimes"+req.UserId)
 		if err != nil {
 			return &user.DoLikeResp{GetFish: false, Liked: true}, nil
