@@ -56,7 +56,7 @@ func (m *EsMapper) SearchUser(ctx context.Context, name string, popts *paginatio
 	if err != nil {
 		return nil, 0, err
 	}
-	res, err := m.es.Search().From(int(*popts.Offset)).Size(int(*popts.Limit)).Index(m.indexName).Request(&search.Request{
+	res, err := m.es.Search().Index(m.indexName).Request(&search.Request{
 		Query: &types.Query{
 			Bool: &types.BoolQuery{
 				Must: []types.Query{
@@ -72,7 +72,7 @@ func (m *EsMapper) SearchUser(ctx context.Context, name string, popts *paginatio
 		},
 		Sort:        s,
 		SearchAfter: sa,
-	}).Do(ctx)
+	}).Size(int(*popts.Limit)).Do(ctx)
 	if err != nil {
 		return nil, 0, err
 	}
